@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>👆 手指乒乓球 - 触摸控制</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+        
+        .game-header {
+            text-align: center;
+            margin-bottom: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            font-size: 2.2em;
+            margin-bottom: 5px;
+            background: linear-gradient(45deg, #00ff88, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1em;
+            opacity: 0.8;
+            color: #00ffff;
+            margin-bottom: 10px;
+        }
+        
+        .game-area {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            max-height: 70vh;
+            aspect-ratio: 1/1.5;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.2),
+                inset 0 0 30px rgba(0, 0, 0, 0.8);
+            touch-action: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: none;
+        }
+        
+        .touch-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40%;
+            display: flex;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        .touch-zone {
+            flex: 1;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.3;
+            transition: opacity 0.3s;
+        }
+        
+        .touch-zone:active {
+            opacity: 0.6;
+            background: rgba(0, 255, 255, 0.1);
+        }
+        
+        .touch-zone.left {
+            border-right: 1px solid rgba(0, 255, 255, 0.2);
+        }
+        
+        .touch-zone.right {
+            border-left: 1px solid rgba(0, 255, 255, 0.2);
+        }
+        
+        .touch-label {
+            font-size: 1.5em;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 500px;
+            margin: 15px 0;
+            background: rgba(0, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 15px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+        
+        .info-item {
+            text-align: center;
+            flex: 1;
+        }
+        
+        .info-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+        
+        .info-label {
+            font-size: 0.8em;
+            color: #00ffff;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
+            margin-top: 10px;
+        }
+        
+        .control-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            color: #000;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+            touch-action: manipulation;
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+        
+        .control-btn.pause {
+            background: linear-gradient(45deg, #ffd700, #ff8c00);
+        }
+        
+        .control-btn.reset {
+            background: linear-gradient(45deg, #ff416c, #ff4b2b);
+        }
+        
+        .instructions {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            border-left: 4px solid #00ff88;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        .instructions h3 {
+            color: #00ff88;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .instructions p {
+            margin-bottom: 5px;
+            color: #ffffff;
+            opacity: 0.9;
+        }
+        
+        .instructions .highlight {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        
+        .status {
+            width: 100%;
+            max-width: 500px;
+            margin: 10px 0;
+            padding: 12px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+        
+        /* 移动端优化 */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .subtitle {
+                font-size: 0.9em;
+            }
+            
+            .game-area {
+                border-radius: 15px;
+                border-width: 2px;
+            }
+            
+            .control-btn {
+                padding: 12px;
+                font-size: 15px;
+            }
+            
+            .info-value {
+                font-size: 1.8em;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            .game-area {
+                max-height: 60vh;
+            }
+            
+            .touch-controls {
+                height: 35%;
+            }
+        }
+        
+        /* 防止长按菜单 */
+        .game-area, .control-btn, .touch-zone {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        
+        /* 加载动画 */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffff;
+            font-size: 1.2em;
+            text-align: center;
+        }
+        
+        /* 胜利特效 */
+        .victory {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 255, 136, 0.1);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-header">
+        <h1>👆 手指乒乓球</h1>
+        <div class="subtitle">触摸控制 · 单人 vs AI · 移动端优化</div>
+    </div>
+    
+    <div class="game-area">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="touch-controls">
+            <div class="touch-zone left" id="touchLeft">
+                <div class="touch-label">⬆️</div>
+            </div>
+            <div class="touch-zone right" id="touchRight">
+                <div class="touch-label">⬇️</div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">加载中...</div>
+        <div class="victory" id="victory">🎉 胜利！</div>
+    </div>
+    
+    <div class="status" id="status">点击"开始游戏"或触摸屏幕开始</div>
+    
+    <div class="game-info">
+        <div class="info-item">
+            <div class="info-value" id="playerScore">0</div>
+            <div class="info-label">你的分数</div>
+        </div>
+        <div class="info-item">
+            <div class="info-value" id="aiScore">0</div>
+            <div class="info-label">AI 分数</div>
+        </div>
+        <div class="info-item">
+            <div class="info-value" id="round">1</div>
+            <div class="info-label">回合</div>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="control-btn" onclick="startGame()">▶️ 开始游戏</button>
+        <button class="control-btn pause" onclick="togglePause()">⏸️ 暂停</button>
+        <button class="control-btn reset" onclick="resetGame()">🔄 重置</button>
+    </div>
+    
+    <div class="instructions">
+        <h3>🎮 游戏说明</h3>
+        <p><span class="highlight">👆 触摸控制：</span></p>
+        <p>• 触摸 <span class="highlight">左侧区域</span> - 球拍上移</p>
+        <p>• 触摸 <span class="highlight">右侧区域</span> - 球拍下移</p>
+        <p><span class="highlight">🎯 游戏规则：</span></p>
+        <p>• 控制左侧球拍反弹乒乓球</p>
+        <p>• 右侧由 AI 自动控制</p>
+        <p>• 防止球从你的侧边出界</p>
+        <p>• 先得 <span class="highlight">7 分</span> 者获胜</p>
+        <p>• 球速会随回合增加</p>
+    </div>
+
+    <script>
+        console.log('👆 手指乒乓球游戏启动...');
+        
+        // ========== 游戏配置 ==========
+        const config = {
+            // 画布尺寸（根据容器自动调整）
+            canvasWidth: 500,
+            canvasHeight: 750,
+            
+            // 游戏对象尺寸
+            paddleWidth: 12,
+            paddleHeight: 80,
+            ballSize: 14,
+            
+            // 游戏参数
+            initialSpeed: 3.5,    // 适合手指控制的初始速度
+            maxSpeed: 6,          // 最大速度
+            winningScore: 7,      // 胜利分数（适合移动端）
+            aiDifficulty: 0.6,    // AI难度（0-1）
+            
+            // 触摸控制
+            touchSensitivity: 1.5, // 触摸灵敏度
+            touchDeadZone: 5       // 触摸死区（像素）
+        };
+        
+        // ========== 游戏状态 ==========
+        let game = {
+            // 运行状态
+            isRunning: false,
+            isPaused: false,
+            
+            // 分数
+            playerScore: 0,
+            aiScore: 0,
+            
+            // 球拍位置
+            playerPaddleY: 0,
+            aiPaddleY: 0,
+            
+            // 球状态
+            ballX: 0,
+            ballY: 0,
+            ballSpeedX: 0,
+            ballSpeedY: 0,
+            currentSpeed: config.initialSpeed,
+            
+            // 游戏统计
+            round: 1,
+            totalHits: 0,
+            
+            // 触摸控制
+            touchLeft: false,
+            touchRight: false,
+            lastTouchY: 0,
+            
+            // 性能优化
+            lastUpdate: 0,
+            frameCount: 0
+        };
+        
+        // ========== DOM 元素 ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+        const playerScoreEl = document.getElementById('playerScore');
+        const aiScoreEl = document.getElementById('aiScore');
+        const roundEl = document.getElementById('round');
+        const loadingEl = document.getElementById('loading');
+        const victoryEl = document.getElementById('victory');
+        const touchLeftEl = document.getElementById('touchLeft');
+        const touchRightEl = document.getElementById('touchRight');
+        
+        // ========== 初始化 ==========
+        function init() {
+            console.log('初始化手指乒乓球游戏...');
+            
+            // 隐藏加载提示
+            loadingEl.style.display = 'none';
+            
+            // 设置画布尺寸
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            window.addEventListener('orientationchange', resizeCanvas);
+            
+            // 设置事件监听
+            setupTouchEvents();
+            
+            // 初始绘制
+            draw();
+            
+            // 开始游戏循环
+            requestAnimationFrame(gameLoop);
+            
+            updateStatus('👆 触摸屏幕左侧/右侧控制球拍');
+            
+            console.log('游戏初始化完成');
+        }
+        
+        // ========== 画布调整 ==========
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const width = Math.min(container.clientWidth, config.canvasWidth);
+            const height = Math.min(container.clientHeight, config.canvasHeight);
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            // 重新计算初始位置
+            game.playerPaddleY = (height - config.paddleHeight) / 2;
+            game.aiPaddleY = (height - config.paddleHeight) / 2;
+            
+            if (!game.isRunning) {
+                resetBall();
+            }
+            
+            console.log(`画布尺寸: ${width}x${height}`);
+        }
+        
+        // ========== 触摸事件 ==========
+        function setupTouchEvents() {
+            console.log('设置触摸事件...');
+            
+            // 左侧触摸区域
+            touchLeftEl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                game.touchLeft = true;
+                updateTouchPosition(e);
+                if (!game.isRunning) startGame();
+            });
+            
+            touchLeftEl.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                updateTouchPosition(e);
+            });
+            
+            touchLeftEl.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                game.touchLeft = false;
+            });
+            
+            // 右侧触摸区域
+            touchRightEl.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                game.touchRight = true;
+                updateTouchPosition(e);
+                if (!game.isRunning) startGame();
+            });
+            
+            touchRightEl.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                updateTouchPosition(e);
+            });
+            
+            touchRightEl.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                game.touchRight = false;
+            });
+            
+            // 防止页面滚动
+            canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+            canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+            
+            // 点击开始游戏
+            canvas.addEventListener('click', () => {
+                if (!game.isRunning) {
+                    startGame();
+                }
+            });
+            
+            console.log('触摸事件设置完成');
+        }
+        
+        function updateTouchPosition(e) {
+            if (e.touches.length > 0) {
+                const touch = e.touches[0];
+                const rect = canvas.getBoundingClientRect();
+                game.lastTouchY = touch.clientY - rect.top;
+            }
+        }
+        
+        // ========== 游戏控制函数 ==========
+        function startGame() {
+            if (!game.isRunning) {
+                game.isRunning = true;
+                game.isPaused = false;
+                game.playerScore = 0;
+                game.aiScore = 0;
+                game.round = 1;
+                game.currentSpeed = config.initialSpeed;
+                
+                resetBall();
+                updateDisplay();
+                updateStatus('游戏开始！触摸左侧/右侧控制');
+                
+                console.log('游戏开始');
+            }
+        }
+        
+        function togglePause() {
+            if (game.isRunning) {
+                game.isPaused = !game.isPaused;
+                updateStatus(game.isPaused ? '游戏已暂停' : '游戏继续');
+            }
+        }
+        
+        function resetGame() {
+            game.isRunning = false;
+            game.isPaused = false;
+            game.playerScore = 0;
+            game.aiScore = 0;
+            game.round = 1;
+            game.currentSpeed = config.initialSpeed;
+            
+            resetPositions();
+            updateDisplay();
+            updateStatus('游戏已重置');
+            hideVictory();
+            
+            console.log('游戏重置');
+        }
+        
+        // ========== 游戏逻辑 ==========
+        function update() {
+            if (!game.isRunning || game.isPaused) return;
+            
+            // 更新玩家球拍（触摸控制）
+            updatePlayerPaddle();
+            
+            // 更新AI球拍
+            updateAIPaddle();
+            
+            // 更新球
+            updateBall();
+            
+            // 检查得分
+            checkScore();
+            
+            // 更新显示
+            updateDisplay();
+        }
+        
+        function updatePlayerPaddle() {
+            const speed = config.touchSensitivity * 15;
+            
+            // 触摸控制
+            if (game.touchLeft) {
+                game.playerPaddleY -= speed;
+            }
+            if (game.touchRight) {
+                game.playerPaddleY += speed;
+            }
+            
+            // 限制边界
+            game.playerPaddleY = Math.max(0, Math.min(canvas.height - config.paddleHeight, game.playerPaddleY));
+        }
+        
+        function updateAIPaddle() {
+            // 智能AI：预测球的位置
+            const aiSpeed = game.currentSpeed * config.aiDifficulty;
+            const targetY = game.ballY - config.paddleHeight / 2;
+            
+            // 添加AI反应时间和失误
+            if (Math.random() > 0.25) { // 75%时间正常反应
+                if (game.aiPaddleY + config.paddleHeight / 2 < targetY - 20) {
+                    game.aiPaddleY += aiSpeed;
+                } else if (game.aiPaddleY + config.paddleHeight / 2 > targetY + 20) {
+                    game.aiPaddleY -= aiSpeed;
+                }
+            }
+            
+            // 随机失误
+            if (Math.random() < 0.08) { // 8%几率失误
+                game.aiPaddleY += (Math.random() - 0.5) * 40;
+            }
+            
+            // 限制边界
+            game.aiPaddleY = Math.max(0, Math.min(canvas.height - config.paddleHeight, game.aiPaddleY));
+        }
+        
+        function updateBall() {
+            // 移动球
+            game.ballX += game.ballSpeedX;
+            game.ballY += game.ballSpeedY;
+            
+            // 上下边界反弹
+            if (game.ballY <= 0 || game.ballY >= canvas.height) {
+                game.ballSpeedY = -game.ballSpeedY;
+                game.ballY = Math.max(0, Math.min(canvas.height, game.ballY));
+            }
+            
+            // 球拍碰撞
+            checkPaddleCollision();
+        }
+        
+        function checkPaddleCollision() {
+            // 玩家球拍（左侧）
+            if (game.ballX - config.ballSize / 2 <= config.paddleWidth &&
+                game.ballY >= game.playerPaddleY &&
+                game.ballY <= game.playerPaddleY + config.paddleHeight) {
+                
+                const hitPoint = (game.ballY - (game.playerPaddleY + config.paddleHeight / 2)) / (config.paddleHeight / 2);
+                game.ballSpeedX = Math.abs(game.ballSpeedX) * 1.04;
+                game.ballSpeedY = hitPoint * game.currentSpeed * 1.3;
+                game.ballX = config.paddleWidth + config.ballSize / 2;
+                game.totalHits++;
+                
+                // 触觉反馈（在支持的情况下）
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate(30);
+                }
+            }
+            
+            // AI球拍（右侧）
+            if (game.ballX + config.ballSize / 2 >= canvas.width - config.paddleWidth &&
+                game.ballY >= game.aiPaddleY &&
+                game.ballY <= game.aiPaddleY + config.paddleHeight) {
+                
+                const hitPoint = (game.ballY - (game.aiPaddleY + config.paddleHeight / 2)) / (config.paddleHeight / 2);
+                game.ballSpeedX = -Math.abs(game.ballSpeedX) * 1.04;
+                game.ballSpeedY = hitPoint * game.currentSpeed * 1.3;
+                game.ballX = canvas.width - config.paddleWidth - config.ballSize / 2;
+                game.totalHits++;
+            }
+        }
+        
+        function checkScore() {
+            // 左侧得分（AI得分）
+            if (game.ballX < 0) {
+                game.aiScore++;
+                resetBall();
+                game.round++;
+                
+                if (game.round % 2 === 0 && game.currentSpeed < config.maxSpeed) {
+                    game.currentSpeed += 0.3;
+                    updateStatus(`球速增加: ${game.currentSpeed.toFixed(1)}x`);
+                }
+            }
+            
+            // 右侧得分（玩家得分）
+            if (game.ballX > canvas.width) {
+                game.playerScore++;
+                resetBall();
+                game.round++;
+                
+                if (game.round % 2 === 0 && game.currentSpeed < config.maxSpeed) {
+                    game.currentSpeed += 0.3;
+                    updateStatus(`球速增加: ${game.currentSpeed.toFixed(1)}x`);
+                }
+            }
+            
+            // 检查胜利
+            if (game.playerScore >= config.winningScore || game.aiScore >= config.winningScore) {
+                const winner = game.playerScore >= config.winningScore ? '玩家' : 'AI';
+                game.isRunning = false;
+                showVictory(winner);
+                updateStatus(`🎉 ${winner} 获胜！`);
+                
+                setTimeout(() => {
+                    alert(`${winner} 获胜！\n比分: ${game.playerScore} - ${game.aiScore}\n回合: ${game.round}`);
+                }, 800);
+            }
+        }
+        
+        // ========== 辅助函数 ==========
+        function resetPositions() {
+            game.playerPaddleY = (canvas.height - config.paddleHeight) / 2;
+            game.aiPaddleY = (canvas.height - config.paddleHeight) / 2;
+            resetBall();
+        }
+        
+        function resetBall() {
+            game.ballX = canvas.width / 2;
+            game.ballY = canvas.height / 2;
+            
+            // 随机方向，但稍微偏向玩家
+            const angle = (Math.random() * Math.PI / 4) - Math.PI / 8;
+            const direction = Math.random() > 0.3 ? 1 : -1; // 70%时间球飞向AI
+            
+            game.ballSpeedX = Math.cos(angle) * game.currentSpeed * direction;
+            game.ballSpeedY = Math.sin(angle) * game.currentSpeed;
+            
+            // 确保最小速度
+            if (Math.abs(game.ballSpeedX) < 1.5) {
+                game.ballSpeedX = 1.5 * direction;
+            }
+        }
+        
+        function showVictory(winner) {
+            victoryEl.textContent = winner === '玩家' ? '🎉 胜利！' : '🤖 AI 胜利';
+            victoryEl.style.display = 'flex';
+            
+            // 胜利动画
+            setTimeout(() => {
+                victoryEl.style.opacity = '1';
+                victoryEl.style.transform = 'scale(1.1)';
+            }, 10);
+        }
+        
+        function hideVictory() {
+            victoryEl.style.opacity = '0';
+            victoryEl.style.transform = 'scale(1)';
+            setTimeout(() => {
+                victoryEl.style.display = 'none';
+            }, 300);
+        }
+        
+        // ========== 绘制函数 ==========
+        function draw() {
+            // 清空画布
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制渐变背景
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#0a0a1a');
+            gradient.addColorStop(1, '#1a1a3a');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制中间网线
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            ctx.setLineDash([8, 8]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 绘制玩家球拍（左侧）
+            const playerGradient = ctx.createLinearGradient(
+                0, game.playerPaddleY,
+                0, game.playerPaddleY + config.paddleHeight
+            );
+            playerGradient.addColorStop(0, '#00ff88');
+            playerGradient.addColorStop(1, '#009944');
+            
+            ctx.fillStyle = playerGradient;
+            ctx.fillRect(
+                10,
+                game.playerPaddleY,
+                config.paddleWidth,
+                config.paddleHeight
+            );
+            
+            // 玩家球拍发光效果
+            ctx.shadowColor = '#00ff88';
+            ctx.shadowBlur = 15;
+            ctx.fillRect(
+                10,
+                game.playerPaddleY,
+                config.paddleWidth,
+                config.paddleHeight
+            );
+            
+            // 绘制AI球拍（右侧）
+            const aiGradient = ctx.createLinearGradient(
+                canvas.width - config.paddleWidth, game.aiPaddleY,
+                canvas.width - config.paddleWidth, game.aiPaddleY + config.paddleHeight
+            );
+            aiGradient.addColorStop(0, '#ff4444');
+            aiGradient.addColorStop(1, '#aa0000');
+            
+            ctx.fillStyle = aiGradient;
+            ctx.fillRect(
+                canvas.width - config.paddleWidth - 10,
+                game.aiPaddleY,
+                config.paddleWidth,
+                config.paddleHeight
+            );
+            
+            // AI球拍发光效果
+            ctx.shadowColor = '#ff4444';
+            ctx.shadowBlur = 15;
+            ctx.fillRect(
+                canvas.width - config.paddleWidth - 10,
+                game.aiPaddleY,
+                config.paddleWidth,
+                config.paddleHeight
+            );
+            
+            // 重置阴影
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            
+            // 绘制球
+            const ballGradient = ctx.createRadialGradient(
+                game.ballX - config.ballSize / 4,
+                game.ballY - config.ballSize / 4,
+                0,
+                game.ballX,
+                game.ballY,
+                config.ballSize / 2
+            );
+            ballGradient.addColorStop(0, '#ffffff');
+            ballGradient.addColorStop(1, '#00ffff');
+            
+            ctx.shadowColor = '#00ffff';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = ballGradient;
+            ctx.beginPath();
+            ctx.arc(game.ballX, game.ballY, config.ballSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            
+            // 绘制分数
+            ctx.font = 'bold 40px Arial';
+            ctx.fillStyle = '#00ff88';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(game.playerScore.toString(), canvas.width / 4, 40);
+            
+            ctx.fillStyle = '#ff4444';
+            ctx.fillText(game.aiScore.toString(), canvas.width * 3 / 4, 40);
+            
+            // 绘制回合和球速
+            ctx.font = '16px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`回合 ${game.round}`, canvas.width / 2, canvas.height - 25);
+            ctx.fillText(`球速: ${game.currentSpeed.toFixed(1)}x`, canvas.width / 2, 25);
+            
+            // 绘制触摸区域指示（调试用）
+            if (game.touchLeft || game.touchRight) {
+                ctx.fillStyle = game.touchLeft ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 68, 68, 0.1)';
+                ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height * 0.4);
+            }
+        }
+        
+        // ========== 显示更新 ==========
+        function updateDisplay() {
+            playerScoreEl.textContent = game.playerScore;
+            aiScoreEl.textContent = game.aiScore;
+            roundEl.textContent = game.round;
+        }
+        
+        function updateStatus(message) {
+            statusEl.textContent = message;
+        }
+        
+        // ========== 游戏循环 ==========
+        function gameLoop(timestamp) {
+            // 性能优化：限制帧率
+            if (!game.lastUpdate) game.lastUpdate = timestamp;
+            const delta = timestamp - game.lastUpdate;
+            
+            if (delta > 16) { // 约60fps
+                update();
+                draw();
+                game.lastUpdate = timestamp;
+                game.frameCount++;
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // ========== 启动游戏 ==========
+        window.addEventListener('load', init);
+        
+        // 导出函数供按钮使用
+        window.startGame = startGame;
+        window.togglePause = togglePause;
+        window.resetGame = resetGame;
+        
+        console.log('👆 手指乒乓球游戏加载完成');
+    </script>
+</body>
+</html>
