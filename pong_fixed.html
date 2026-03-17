@@ -188,8 +188,8 @@
             paddleWidth: 15,
             paddleHeight: 100,
             ballSize: 15,
-            initialSpeed: 5,
-            maxSpeed: 10,
+            initialSpeed: 4, // 降低初始速度
+            maxSpeed: 8,    // 降低最大速度
             winningScore: 11
         };
         
@@ -303,7 +303,14 @@
                 
                 resetBall();
                 updateDisplay();
-                updateStatus('游戏进行中！');
+                updateStatus('游戏开始！使用 W/S 和 ↑/↓ 控制');
+                
+                // 添加开始提示
+                setTimeout(() => {
+                    if (game.isRunning && !game.isPaused) {
+                        updateStatus('游戏进行中！');
+                    }
+                }, 2000);
                 
                 console.log('游戏开始');
             }
@@ -359,22 +366,22 @@
         }
         
         function updatePaddles() {
-            const speed = 8;
+            const speed = 10; // 增加移动速度
             
-            // 玩家1控制
-            if (game.keys['w']) {
+            // 玩家1控制 - 改进响应
+            if (game.keys['w'] || game.keys['w'.toUpperCase()]) {
                 game.paddle1Y -= speed;
             }
-            if (game.keys['s']) {
+            if (game.keys['s'] || game.keys['s'.toUpperCase()]) {
                 game.paddle1Y += speed;
             }
             
-            // 玩家2控制（如果不是AI模式）
+            // 玩家2控制（如果不是AI模式）- 改进响应
             if (!game.isAIMode) {
-                if (game.keys['arrowup']) {
+                if (game.keys['arrowup'] || game.keys['up']) {
                     game.paddle2Y -= speed;
                 }
-                if (game.keys['arrowdown']) {
+                if (game.keys['arrowdown'] || game.keys['down']) {
                     game.paddle2Y += speed;
                 }
             }
@@ -385,14 +392,22 @@
         }
         
         function updateAI() {
-            // 简单AI：跟随球的位置
-            const aiSpeed = game.currentSpeed * 0.7;
+            // 改进AI：降低难度
+            const aiSpeed = game.currentSpeed * 0.5; // 降低AI速度
             const targetY = game.ballY - config.paddleHeight / 2;
             
-            if (game.paddle2Y + config.paddleHeight / 2 < targetY - 10) {
-                game.paddle2Y += aiSpeed;
-            } else if (game.paddle2Y + config.paddleHeight / 2 > targetY + 10) {
-                game.paddle2Y -= aiSpeed;
+            // 添加AI反应延迟
+            if (Math.random() > 0.3) { // 70%时间反应
+                if (game.paddle2Y + config.paddleHeight / 2 < targetY - 15) {
+                    game.paddle2Y += aiSpeed;
+                } else if (game.paddle2Y + config.paddleHeight / 2 > targetY + 15) {
+                    game.paddle2Y -= aiSpeed;
+                }
+            }
+            
+            // 添加AI失误
+            if (Math.random() < 0.05) { // 5%几率失误
+                game.paddle2Y += (Math.random() - 0.5) * 30;
             }
         }
         
