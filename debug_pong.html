@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>乒乓球游戏调试</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        #debug { background: #000; color: #0f0; padding: 20px; margin: 20px 0; height: 300px; overflow-y: auto; }
+        button { padding: 10px; margin: 5px; }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+    </style>
+</head>
+<body>
+    <h1>🔧 乒乓球游戏调试工具</h1>
+    
+    <button onclick="testGame()">测试游戏初始化</button>
+    <button onclick="testControls()">测试控制功能</button>
+    <button onclick="testCanvas()">测试Canvas</button>
+    <button onclick="openGame()">打开游戏</button>
+    
+    <div id="debug"></div>
+    
+    <script>
+        const debug = document.getElementById('debug');
+        
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = type;
+            div.textContent = `[${time}] ${msg}`;
+            debug.appendChild(div);
+            debug.scrollTop = debug.scrollHeight;
+            console.log(msg);
+        }
+        
+        function testGame() {
+            log('开始测试游戏初始化...');
+            
+            // 测试1: 检查游戏文件
+            fetch('pong.html')
+                .then(r => {
+                    if (r.ok) {
+                        log('✅ 游戏文件可访问', 'success');
+                        return r.text();
+                    } else {
+                        log('❌ 游戏文件无法访问', 'error');
+                    }
+                })
+                .then(text => {
+                    if (text) {
+                        // 检查关键函数
+                        const checks = [
+                            { name: 'initGame', regex: /function initGame/ },
+                            { name: 'startGame', regex: /function startGame/ },
+                            { name: 'updateGame', regex: /function updateGame/ },
+                            { name: 'gameLoop', regex: /function gameLoop/ },
+                            { name: 'Canvas元素', regex: /id=["']gameCanvas["']/ }
+                        ];
+                        
+                        checks.forEach(check => {
+                            if (check.regex.test(text)) {
+                                log(`✅ 找到 ${check.name}`, 'success');
+                            } else {
+                                log(`❌ 未找到 ${check.name}`, 'error');
+                            }
+                        });
+                    }
+                })
+                .catch(e => log(`❌ 测试失败: ${e}`, 'error'));
+        }
+        
+        function testControls() {
+            log('测试控制功能...');
+            
+            // 模拟按键测试
+            const testKeys = ['w', 's', 'ArrowUp', 'ArrowDown', ' '];
+            let pressed = 0;
+            
+            function handleKey(e) {
+                if (testKeys.includes(e.key)) {
+                    log(`✅ 按键检测: ${e.key}`, 'success');
+                    pressed++;
+                    
+                    if (pressed === testKeys.length) {
+                        log('🎉 所有控制键正常工作！', 'success');
+                        window.removeEventListener('keydown', handleKey);
+                    }
+                }
+            }
+            
+            window.addEventListener('keydown', handleKey);
+            log('请按以下键测试: W, S, ↑, ↓, 空格键');
+            
+            setTimeout(() => {
+                if (pressed < testKeys.length) {
+                    log(`⚠️ 只检测到 ${pressed}/${testKeys.length} 个按键`, 'error');
+                    window.removeEventListener('keydown', handleKey);
+                }
+            }, 10000);
+        }
+        
+        function testCanvas() {
+            log('测试Canvas支持...');
+            
+            const canvas = document.createElement('canvas');
+            if (canvas.getContext) {
+                log('✅ 浏览器支持Canvas', 'success');
+                
+                // 测试基本绘图
+                const ctx = canvas.getContext('2d');
+                canvas.width = 100;
+                canvas.height = 100;
+                
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(0, 0, 50, 50);
+                ctx.fillStyle = '#0f0';
+                ctx.fillRect(50, 0, 50, 50);
+                ctx.fillStyle = '#00f';
+                ctx.fillRect(0, 50, 50, 50);
+                
+                log('✅ Canvas绘图功能正常', 'success');
+            } else {
+                log('❌ 浏览器不支持Canvas', 'error');
+            }
+        }
+        
+        function openGame() {
+            window.open('pong.html', '_blank');
+            log('正在打开游戏...');
+        }
+        
+        // 自动运行基础测试
+        setTimeout(() => {
+            log('=== 自动测试开始 ===');
+            testCanvas();
+            
+            // 检查游戏文件
+            fetch('pong.html')
+                .then(r => {
+                    if (r.ok) {
+                        log('✅ 游戏文件存在', 'success');
+                        return r.text();
+                    }
+                    throw new Error('文件不存在');
+                })
+                .then(text => {
+                    // 检查常见问题
+                    if (text.includes('gameState.isRunning = false')) {
+                        log('✅ 找到游戏状态管理', 'success');
+                    }
+                    if (text.includes('requestAnimationFrame')) {
+                        log('✅ 找到动画循环', 'success');
+                    }
+                    if (text.includes('addEventListener')) {
+                        log('✅ 找到事件监听', 'success');
+                    }
+                    
+                    // 检查可能的错误
+                    const errors = [];
+                    if (!text.includes('function initGame')) errors.push('缺少initGame函数');
+                    if (!text.includes('function gameLoop')) errors.push('缺少gameLoop函数');
+                    if (!text.includes('canvas.addEventListener')) errors.push('缺少Canvas事件监听');
+                    
+                    if (errors.length > 0) {
+                        errors.forEach(err => log(`❌ ${err}`, 'error'));
+                    } else {
+                        log('🎉 游戏代码结构正常', 'success');
+                    }
+                })
+                .catch(e => log(`❌ 游戏文件检查失败: ${e}`, 'error'));
+        }, 1000);
+    </script>
+</body>
+</html>
