@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏓 乒乓球游戏 - 修复版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a2e;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .game-container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #00ffff;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+        
+        #gameCanvas {
+            background: #000;
+            border: 3px solid #00ffff;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #00ff88, #00ccff);
+            color: #000;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            background: rgba(0, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        
+        .info-item {
+            text-align: center;
+        }
+        
+        .info-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .info-label {
+            font-size: 0.9em;
+            color: #00ffff;
+            opacity: 0.8;
+        }
+        
+        .instructions {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+            border-left: 4px solid #00ff88;
+        }
+        
+        .status {
+            padding: 15px;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        @media (max-width: 768px) {
+            #gameCanvas {
+                width: 100%;
+                height: auto;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🏓 乒乓球游戏</h1>
+        <div class="subtitle">经典双人对战 · 确保可以玩</div>
+        
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+        
+        <div class="status" id="status">准备开始游戏！</div>
+        
+        <div class="controls">
+            <button onclick="startGame()">▶️ 开始游戏</button>
+            <button onclick="togglePause()">⏸️ 暂停/继续</button>
+            <button onclick="resetGame()">🔄 重新开始</button>
+            <button onclick="toggleMode()">🤖 切换模式</button>
+        </div>
+        
+        <div class="game-info">
+            <div class="info-item">
+                <div class="info-value" id="score1">0</div>
+                <div class="info-label">玩家1 得分</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="score2">0</div>
+                <div class="info-label">玩家2 得分</div>
+            </div>
+            <div class="info-item">
+                <div class="info-value" id="round">1</div>
+                <div class="info-label">当前回合</div>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>🎮 游戏说明</h3>
+            <p><strong>控制方式：</strong></p>
+            <p>• 玩家1 (左侧): W (上) / S (下)</p>
+            <p>• 玩家2 (右侧): ↑ (上) / ↓ (下)</p>
+            <p>• 空格键: 开始/暂停游戏</p>
+            <p>• 鼠标: 在对应区域移动控制球拍</p>
+            <p><strong>游戏规则：</strong></p>
+            <p>• 控制球拍反弹乒乓球</p>
+            <p>• 防止球从你的侧边出界</p>
+            <p>• 先得11分者获胜</p>
+            <p>• 球速会随回合增加</p>
+        </div>
+    </div>
+
+    <script>
+        console.log('🏓 乒乓球游戏启动...');
+        
+        // ========== 游戏配置 ==========
+        const config = {
+            canvasWidth: 800,
+            canvasHeight: 500,
+            paddleWidth: 15,
+            paddleHeight: 100,
+            ballSize: 15,
+            initialSpeed: 5,
+            maxSpeed: 10,
+            winningScore: 11
+        };
+        
+        // ========== 游戏状态 ==========
+        let game = {
+            // 运行状态
+            isRunning: false,
+            isPaused: false,
+            isAIMode: false,
+            
+            // 分数
+            score1: 0,
+            score2: 0,
+            
+            // 球拍位置
+            paddle1Y: 200,
+            paddle2Y: 200,
+            
+            // 球状态
+            ballX: 400,
+            ballY: 250,
+            ballSpeedX: 5,
+            ballSpeedY: 3,
+            currentSpeed: 5,
+            
+            // 游戏统计
+            round: 1,
+            totalHits: 0,
+            
+            // 控制状态
+            keys: {}
+        };
+        
+        // ========== DOM 元素 ==========
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+        const score1El = document.getElementById('score1');
+        const score2El = document.getElementById('score2');
+        const roundEl = document.getElementById('round');
+        
+        // ========== 初始化 ==========
+        function init() {
+            console.log('初始化游戏...');
+            
+            // 设置事件监听
+            setupEvents();
+            
+            // 初始绘制
+            draw();
+            
+            // 开始游戏循环
+            requestAnimationFrame(gameLoop);
+            
+            updateStatus('按"开始游戏"或空格键开始');
+        }
+        
+        // ========== 事件监听 ==========
+        function setupEvents() {
+            // 键盘事件
+            window.addEventListener('keydown', (e) => {
+                game.keys[e.key.toLowerCase()] = true;
+                
+                // 空格键开始/暂停
+                if (e.key === ' ') {
+                    if (!game.isRunning) {
+                        startGame();
+                    } else {
+                        togglePause();
+                    }
+                    e.preventDefault();
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                game.keys[e.key.toLowerCase()] = false;
+            });
+            
+            // 鼠标事件
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const mouseY = e.clientY - rect.top;
+                
+                // 根据鼠标位置控制球拍
+                if (e.clientX - rect.left < canvas.width / 2) {
+                    game.paddle1Y = mouseY - config.paddleHeight / 2;
+                } else {
+                    game.paddle2Y = mouseY - config.paddleHeight / 2;
+                }
+            });
+            
+            // 点击开始
+            canvas.addEventListener('click', () => {
+                if (!game.isRunning) {
+                    startGame();
+                }
+            });
+            
+            console.log('事件监听设置完成');
+        }
+        
+        // ========== 游戏控制函数 ==========
+        function startGame() {
+            if (!game.isRunning) {
+                game.isRunning = true;
+                game.isPaused = false;
+                game.score1 = 0;
+                game.score2 = 0;
+                game.round = 1;
+                game.currentSpeed = config.initialSpeed;
+                
+                resetBall();
+                updateDisplay();
+                updateStatus('游戏进行中！');
+                
+                console.log('游戏开始');
+            }
+        }
+        
+        function togglePause() {
+            if (game.isRunning) {
+                game.isPaused = !game.isPaused;
+                updateStatus(game.isPaused ? '游戏已暂停' : '游戏继续');
+            }
+        }
+        
+        function resetGame() {
+            game.isRunning = false;
+            game.isPaused = false;
+            game.score1 = 0;
+            game.score2 = 0;
+            game.round = 1;
+            game.currentSpeed = config.initialSpeed;
+            
+            resetPositions();
+            updateDisplay();
+            updateStatus('游戏已重置');
+            
+            console.log('游戏重置');
+        }
+        
+        function toggleMode() {
+            game.isAIMode = !game.isAIMode;
+            updateStatus(game.isAIMode ? 'AI对战模式' : '双人对战模式');
+        }
+        
+        // ========== 游戏逻辑 ==========
+        function update() {
+            if (!game.isRunning || game.isPaused) return;
+            
+            // 更新球拍位置
+            updatePaddles();
+            
+            // 更新AI
+            if (game.isAIMode) {
+                updateAI();
+            }
+            
+            // 更新球
+            updateBall();
+            
+            // 检查得分
+            checkScore();
+            
+            // 更新显示
+            updateDisplay();
+        }
+        
+        function updatePaddles() {
+            const speed = 8;
+            
+            // 玩家1控制
+            if (game.keys['w']) {
+                game.paddle1Y -= speed;
+            }
+            if (game.keys['s']) {
+                game.paddle1Y += speed;
+            }
+            
+            // 玩家2控制（如果不是AI模式）
+            if (!game.isAIMode) {
+                if (game.keys['arrowup']) {
+                    game.paddle2Y -= speed;
+                }
+                if (game.keys['arrowdown']) {
+                    game.paddle2Y += speed;
+                }
+            }
+            
+            // 限制边界
+            game.paddle1Y = Math.max(0, Math.min(canvas.height - config.paddleHeight, game.paddle1Y));
+            game.paddle2Y = Math.max(0, Math.min(canvas.height - config.paddleHeight, game.paddle2Y));
+        }
+        
+        function updateAI() {
+            // 简单AI：跟随球的位置
+            const aiSpeed = game.currentSpeed * 0.7;
+            const targetY = game.ballY - config.paddleHeight / 2;
+            
+            if (game.paddle2Y + config.paddleHeight / 2 < targetY - 10) {
+                game.paddle2Y += aiSpeed;
+            } else if (game.paddle2Y + config.paddleHeight / 2 > targetY + 10) {
+                game.paddle2Y -= aiSpeed;
+            }
+        }
+        
+        function updateBall() {
+            // 移动球
+            game.ballX += game.ballSpeedX;
+            game.ballY += game.ballSpeedY;
+            
+            // 上下边界反弹
+            if (game.ballY <= 0 || game.ballY >= canvas.height) {
+                game.ballSpeedY = -game.ballSpeedY;
+                game.ballY = Math.max(0, Math.min(canvas.height, game.ballY));
+            }
+            
+            // 球拍碰撞
+            checkPaddleCollision();
+        }
+        
+        function checkPaddleCollision() {
+            // 左侧球拍
+            if (game.ballX - config.ballSize / 2 <= config.paddleWidth &&
+                game.ballY >= game.paddle1Y &&
+                game.ballY <= game.paddle1Y + config.paddleHeight) {
+                
+                const hitPoint = (game.ballY - (game.paddle1Y + config.paddleHeight / 2)) / (config.paddleHeight / 2);
+                game.ballSpeedX = Math.abs(game.ballSpeedX) * 1.05;
+                game.ballSpeedY = hitPoint * game.currentSpeed;
+                game.ballX = config.paddleWidth + config.ballSize / 2;
+                game.totalHits++;
+            }
+            
+            // 右侧球拍
+            if (game.ballX + config.ballSize / 2 >= canvas.width - config.paddleWidth &&
+                game.ballY >= game.paddle2Y &&
+                game.ballY <= game.paddle2Y + config.paddleHeight) {
+                
+                const hitPoint = (game.ballY - (game.paddle2Y + config.paddleHeight / 2)) / (config.paddleHeight / 2);
+                game.ballSpeedX = -Math.abs(game.ballSpeedX) * 1.05;
+                game.ballSpeedY = hitPoint * game.currentSpeed;
+                game.ballX = canvas.width - config.paddleWidth - config.ballSize / 2;
+                game.totalHits++;
+            }
+        }
+        
+        function checkScore() {
+            // 左侧得分
+            if (game.ballX < 0) {
+                game.score2++;
+                resetBall();
+                game.round++;
+                
+                if (game.round % 3 === 0 && game.currentSpeed < config.maxSpeed) {
+                    game.currentSpeed += 0.5;
+                    updateStatus(`球速增加: ${game.currentSpeed.toFixed(1)}x`);
+                }
+            }
+            
+            // 右侧得分
+            if (game.ballX > canvas.width) {
+                game.score1++;
+                resetBall();
+                game.round++;
+                
+                if (game.round % 3 === 0 && game.currentSpeed < config.maxSpeed) {
+                    game.currentSpeed += 0.5;
+                    updateStatus(`球速增加: ${game.currentSpeed.toFixed(1)}x`);
+                }
+            }
+            
+            // 检查胜利
+            if (game.score1 >= config.winningScore || game.score2 >= config.winningScore) {
+                const winner = game.score1 >= config.winningScore ? '玩家1' : (game.isAIMode ? 'AI' : '玩家2');
+                game.isRunning = false;
+                updateStatus(`🎉 ${winner} 获胜！`);
+                
+                setTimeout(() => {
+                    alert(`${winner} 获胜！\n比分: ${game.score1} - ${game.score2}`);
+                }, 500);
+            }
+        }
+        
+        // ========== 辅助函数 ==========
+        function resetPositions() {
+            game.paddle1Y = (canvas.height - config.paddleHeight) / 2;
+            game.paddle2Y = (canvas.height - config.paddleHeight) / 2;
+            resetBall();
+        }
+        
+        function resetBall() {
+            game.ballX = canvas.width / 2;
+            game.ballY = canvas.height / 2;
+            
+            const angle = (Math.random() * Math.PI / 3) - Math.PI / 6;
+            const direction = Math.random() > 0.5 ? 1 : -1;
+            
+            game.ballSpeedX = Math.cos(angle) * game.currentSpeed * direction;
+            game.ballSpeedY = Math.sin(angle) * game.currentSpeed;
+            
+            if (Math.abs(game.ballSpeedX) < 2) {
+                game.ballSpeedX = 2 * direction;
+            }
+        }
+        
+        // ========== 绘制函数 ==========
+        function draw() {
+            // 清空画布
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 中间网线
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            
+            // 球拍
+            ctx.fillStyle = '#00ff88';
+            ctx.fillRect(10, game.paddle1Y, config.paddleWidth, config.paddleHeight);
+            
+            ctx.fillStyle = '#0088ff';
+            ctx.fillRect(canvas.width - config.paddleWidth - 10, game.paddle2Y, config.paddleWidth, config.paddleHeight);
+            
+            // 球
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.arc(game.ballX, game.ballY, config.ballSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 分数
+            ctx.font = 'bold 60px Arial';
+            ctx.fillStyle = '#00ff88';
+            ctx.textAlign = 'center';
+            ctx.fillText(game.score1.toString(), canvas.width / 4, 60);
+            
+            ctx.fillStyle = '#0088ff';
+            ctx.fillText(game.score2.toString(), canvas.width * 3 / 4, 60);
+            
+            // 回合显示
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(`回合 ${game.round}`, canvas.width / 2, canvas.height - 30);
+            ctx.fillText(`球速: ${game.currentSpeed.toFixed(1)}x`, canvas.width / 2, 30);
+        }
+        
+        // ========== 显示更新 ==========
+        function updateDisplay() {
+            score1El.textContent = game.score1;
+            score2El.textContent = game.score2;
+            roundEl.textContent = game.round;
+        }
+        
+        function updateStatus(message) {
+            statusEl.textContent = message;
+        }
+        
+        // ========== 游戏循环 ==========
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // ========== 启动游戏 ==========
+        window.addEventListener('load', init);
+        
+        // 导出函数供按钮使用
+        window.startGame = startGame;
+        window.togglePause = togglePause;
+        window.resetGame = resetGame;
+        window.toggleMode = toggleMode;
+        
+        console.log('游戏代码加载完成，等待初始化...');
+    </script>
+</body>
+</html>
