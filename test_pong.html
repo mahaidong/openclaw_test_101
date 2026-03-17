@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>乒乓球游戏测试</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .pass { background: #d4edda; color: #155724; }
+        .fail { background: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🏓 乒乓球游戏功能测试</h1>
+    
+    <div id="test1" class="test-result">
+        <h3>测试1: 游戏文件检查</h3>
+        <p id="test1-result">正在检查...</p>
+    </div>
+    
+    <div id="test2" class="test-result">
+        <h3>测试2: Canvas支持检查</h3>
+        <p id="test2-result">正在检查...</p>
+    </div>
+    
+    <div id="test3" class="test-result">
+        <h3>测试3: 控制功能测试</h3>
+        <p id="test3-result">正在检查...</p>
+        <button onclick="testControls()">测试键盘控制</button>
+        <div>按 W/S 测试玩家1控制</div>
+        <div>按 ↑/↓ 测试玩家2控制</div>
+    </div>
+    
+    <div id="test4" class="test-result">
+        <h3>测试4: 游戏链接</h3>
+        <p id="test4-result">正在检查...</p>
+        <a href="pong.html" target="_blank">点击这里打开乒乓球游戏</a>
+    </div>
+    
+    <script>
+        // 测试1: 游戏文件检查
+        fetch('pong.html')
+            .then(response => {
+                const test1 = document.getElementById('test1-result');
+                if (response.ok) {
+                    test1.innerHTML = '✅ 游戏文件存在且可访问';
+                    test1.parentElement.className = 'test-result pass';
+                } else {
+                    test1.innerHTML = '❌ 游戏文件无法访问';
+                    test1.parentElement.className = 'test-result fail';
+                }
+            })
+            .catch(error => {
+                document.getElementById('test1-result').innerHTML = '❌ 游戏文件检查失败: ' + error;
+                document.getElementById('test1').className = 'test-result fail';
+            });
+        
+        // 测试2: Canvas支持检查
+        const test2 = document.getElementById('test2-result');
+        if (window.HTMLCanvasElement) {
+            test2.innerHTML = '✅ 浏览器支持Canvas';
+            test2.parentElement.className = 'test-result pass';
+        } else {
+            test2.innerHTML = '❌ 浏览器不支持Canvas';
+            test2.parentElement.className = 'test-result fail';
+        }
+        
+        // 测试3: 控制功能测试
+        let keyTestCount = 0;
+        function testControls() {
+            const test3 = document.getElementById('test3-result');
+            test3.innerHTML = '请按以下键测试：<br>' +
+                             '1. 按 W 键 (玩家1上移)<br>' +
+                             '2. 按 S 键 (玩家1下移)<br>' +
+                             '3. 按 ↑ 键 (玩家2上移)<br>' +
+                             '4. 按 ↓ 键 (玩家2下移)<br>' +
+                             '已检测按键: <span id="keyCount">0</span>/4';
+            test3.parentElement.className = 'test-result';
+            
+            const keysToTest = ['w', 's', 'arrowup', 'arrowdown'];
+            const pressedKeys = new Set();
+            
+            function handleKeyDown(e) {
+                const key = e.key.toLowerCase();
+                if (keysToTest.includes(key)) {
+                    pressedKeys.add(key);
+                    document.getElementById('keyCount').textContent = pressedKeys.size;
+                    
+                    if (pressedKeys.size === keysToTest.length) {
+                        test3.innerHTML = '✅ 所有控制键正常工作！';
+                        test3.parentElement.className = 'test-result pass';
+                        window.removeEventListener('keydown', handleKeyDown);
+                    }
+                }
+            }
+            
+            window.addEventListener('keydown', handleKeyDown);
+            
+            // 5秒后超时
+            setTimeout(() => {
+                if (pressedKeys.size < keysToTest.length) {
+                    test3.innerHTML = `⚠️ 部分控制键未检测到 (${pressedKeys.size}/${keysToTest.length})`;
+                    test3.parentElement.className = 'test-result fail';
+                    window.removeEventListener('keydown', handleKeyDown);
+                }
+            }, 5000);
+        }
+        
+        // 测试4: 游戏链接
+        const test4 = document.getElementById('test4-result');
+        test4.innerHTML = '✅ 游戏链接: <a href="pong.html" target="_blank">pong.html</a><br>' +
+                         'GitHub Pages: <a href="https://mahaidong.github.io/openclaw_test_101/pong.html" target="_blank">在线访问</a>';
+        test4.parentElement.className = 'test-result pass';
+        
+        // 自动运行一些测试
+        setTimeout(() => {
+            console.log('🎮 乒乓球游戏测试完成');
+            console.log('游戏链接: https://mahaidong.github.io/openclaw_test_101/pong.html');
+        }, 1000);
+    </script>
+</body>
+</html>

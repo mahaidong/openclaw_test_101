@@ -424,6 +424,7 @@
                 <h4>👤 玩家2 (右侧)</h4>
                 <p>控制键：<span class="key">↑</span> 向上 · <span class="key">↓</span> 向下</p>
                 <p>或使用鼠标在右侧区域控制</p>
+                <p><small>注意：在AI模式下，右侧由电脑控制</small></p>
             </div>
         </div>
         
@@ -756,23 +757,23 @@
         function updatePaddles() {
             const paddleSpeed = 8;
             
-            // 玩家1控制 (W/S 或 上箭头/下箭头)
-            if (gameState.keysPressed['w'] || gameState.keysPressed['arrowup']) {
+            // 玩家1控制 (W/S)
+            if (gameState.keysPressed['w']) {
                 gameState.paddle1Y -= paddleSpeed;
                 gameState.isMouseControl = false;
             }
-            if (gameState.keysPressed['s'] || gameState.keysPressed['arrowdown']) {
+            if (gameState.keysPressed['s']) {
                 gameState.paddle1Y += paddleSpeed;
                 gameState.isMouseControl = false;
             }
             
-            // 玩家2控制 (仅在PVP模式)
+            // 玩家2控制 (上箭头/下箭头，仅在PVP模式)
             if (gameState.gameMode === 'pvp') {
-                if (gameState.keysPressed['i'] || gameState.keysPressed['arrowup']) {
+                if (gameState.keysPressed['arrowup']) {
                     gameState.paddle2Y -= paddleSpeed;
                     gameState.isMouseControl = false;
                 }
-                if (gameState.keysPressed['k'] || gameState.keysPressed['arrowdown']) {
+                if (gameState.keysPressed['arrowdown']) {
                     gameState.paddle2Y += paddleSpeed;
                     gameState.isMouseControl = false;
                 }
